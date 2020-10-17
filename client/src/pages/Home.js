@@ -1,10 +1,75 @@
 import React from 'react'
+import { Link } from "react-router-dom";
+import { Row, Button, Col } from "react-bootstrap";
+import { useAuthDispatch, useAuthState } from "../context/auth";
+import { gql, useQuery } from "@apollo/client";
 
-const Home = () => {
+const GET_USERS = gql`
+  query getUsers{
+    getUsers{
+      username email createdAt
+    }
+  }
+`
+
+const Home = (props) => {
+  const dispatch = useAuthDispatch()
+  const { user } = useAuthState()
+  const logout = () => {
+    dispatch({ type: 'LOGOUT' })
+    props.history.push('/login')
+  }
+
+  const { loading, data, error } = useQuery(GET_USERS)
+
+  if (error) {
+    console.log(error)
+  }
+  if (data) {
+    console.log(data)
+  }
+
+  let userMarkup
+  if (!data || loading) {
+    userMarkup = <p>Loading...</p>
+  }
+  else if (data.getUsers.length === 0) {
+    userMarkup = <p>no user yet..!</p>
+  }
+  else if (data.getUsers.length > 0) {
+    userMarkup = data.getUsers.map((user, i) => (
+      <div key={i}><h6>{user.username}</h6></div>
+    ))
+  }
   return (
-    <div>
-      <h1>Home</h1>
-    </div>
+    <>
+      {user
+        ? (
+          <Row className='bg-white justify-content-around'>
+            <Button variant='link' onClick={logout}>Logout</Button>
+          </Row>
+        )
+        : (
+          <Row className='bg-white justify-content-around'>
+            <Link to='/register'>
+              <Button variant='link'>Register</Button>
+            </Link>
+            <Link to='/login'>
+              <Button variant='link'>Login</Button>
+            </Link>
+            <Button variant='link' onClick={logout}>Logout</Button>
+          </Row>
+        )
+      }
+      <Row className='bg-white mt-2'>
+        <Col xs={4}>
+          {userMarkup}
+        </Col>
+        <Col xs={8}>
+          <p>Messages</p>
+        </Col>
+      </Row>
+    </>
   )
 }
 
