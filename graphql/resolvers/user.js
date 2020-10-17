@@ -1,25 +1,16 @@
-const { User } = require('../models');
+const { User } = require('../../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require('../config/env.json')
+const { JWT_SECRET } = require('../../config/env.json')
 const { Op } = require('sequelize')
 
 const { UserInputError, AuthenticationError } = require('apollo-server')
 module.exports = {
   Query: {
-    getUsers: async (_, __, context) => {
+    getUsers: async (_, __, { user }) => {
       try {
-        let user
-        if (context.req && context.req.headers.authorization) {
-          const token = context.req.headers.authorization
-          jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
-            if (err) {
-              throw new AuthenticationError('Unauthenticated')
-            }
-            user = decodedToken
-            console.log(user)
-          })
-        }
+        if(!user) throw new AuthenticationError('Unauthorize')
+        
         const users = await User.findAll({
           where: {
             username:{[Op.ne]:user.username}
@@ -34,37 +25,44 @@ module.exports = {
     login: async (_, args) => {
       const { username, password } = args
       let errors = {}
+
       try {
-        if (username.trim() === '') errors.username = 'username must not be empty'
+        if (username.trim() === '')
+          errors.username = 'username must not be empty'
         if (password === '') errors.password = 'password must not be empty'
 
         if (Object.keys(errors).length > 0) {
           throw new UserInputError('bad input', { errors })
         }
 
-        const user = await User.findOne({ where: { username } })
+        const user = await User.findOne({
+          where: { username },
+        })
+
         if (!user) {
           errors.username = 'user not found'
           throw new UserInputError('user not found', { errors })
         }
 
-        const validate = await bcrypt.compare(password, user.password)
-        if (!validate) {
+        const correctPassword = await bcrypt.compare(password, user.password)
+
+        if (!correctPassword) {
           errors.password = 'password is incorrect'
-          throw new UserInputError('Password is incorrect', { errors })
+          throw new UserInputError('password is incorrect', { errors })
         }
-        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: 60 * 60 })
+
+        const token = jwt.sign({ username }, JWT_SECRET)
 
         return {
           ...user.toJSON(),
           createdAt: user.createdAt.toISOString(),
-          token
+          token,
         }
       } catch (err) {
         console.log(err)
         throw err
       }
-    }
+    },
   },
 
   Mutation: {
