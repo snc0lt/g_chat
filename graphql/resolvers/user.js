@@ -1,8 +1,10 @@
-const { User } = require('../../models');
+const { User, Message } = require('../../models');
+const path = require('path')
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../../config/env.json')
 const { Op } = require('sequelize')
+var imageURL = 'https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_1280.png'
 
 const { UserInputError, AuthenticationError } = require('apollo-server')
 module.exports = {
@@ -11,10 +13,25 @@ module.exports = {
       try {
         if(!user) throw new AuthenticationError('Unauthorize')
         
-        const users = await User.findAll({
+        let users = await User.findAll({
+          attributes: ['username', 'imageURL', 'createdAt'],
           where: {
             username:{[Op.ne]:user.username}
           }
+        })
+        const allUserMessages = await Message.findAll({
+          where: {
+            [Op.or]: [{ from: user.username }, { to: user.username }],
+          },
+          order: [['createdAt', 'DESC']],
+        })
+
+        users = users.map((otherUser) => {
+          const latestMessage = allUserMessages.find(
+            (m) => m.from === otherUser.username || m.to === otherUser.username
+          )
+          otherUser.latestMessage = latestMessage
+          return otherUser
         })
         return users
       } catch (err) {
@@ -69,7 +86,7 @@ module.exports = {
     register: async (_, args) => {
       let { username, email, password, confirmPassword } = args
       let errors = {}
-
+      
       try {
         if (email.trim() === '') errors.email = 'email must not be empty'
         if (username.trim() === '')
@@ -88,7 +105,7 @@ module.exports = {
 
         password = await bcrypt.hash(password, 10)
         const newUser = await User.create({
-          username, email, password
+          username, email, password, imageURL
         })
         return newUser
       } catch (err) {
