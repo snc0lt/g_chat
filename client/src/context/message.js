@@ -42,7 +42,9 @@ const messageReducer = (state, action) => {
       userIndex = usersCopy.findIndex(u => u.username === action.payload.username)
       let user = {
         ...usersCopy[userIndex],
-        messages: usersCopy[userIndex].messages ? [action.payload.message, ...usersCopy[userIndex].messages] : null,
+        messages: usersCopy[userIndex].messages
+          ? [action.payload.message, ...usersCopy[userIndex].messages]
+          : null,
         latestMessage: action.payload.message
       }
       usersCopy[userIndex] = user
