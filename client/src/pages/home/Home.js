@@ -27,9 +27,7 @@ export default function Home({ history }) {
 
   const { user } = useAuthState()
 
-  const { data: messageData, error: messageError } = useSubscription(
-    NEW_MESSAGE
-  )
+  const { data: messageData, error: messageError } = useSubscription(NEW_MESSAGE)
 
   useEffect(() => {
     if (messageError) console.log(messageError)
@@ -43,10 +41,10 @@ export default function Home({ history }) {
         payload: {
           username: otherUser,
           message,
-        }
+        },
       })
     }
-  }, [messageError, messageData])
+  }, [messageError, messageData, messageDispatch])
 
   const logout = () => {
     authDispatch({ type: 'LOGOUT' })
